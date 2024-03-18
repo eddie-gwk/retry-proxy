@@ -6,6 +6,7 @@ import com.edward.retry.proxy.utils.StringUtil;
 import com.edward.retry.proxy.utils.TryCatchUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -22,8 +23,8 @@ public class RetryTask<T> implements Callable<RetryTaskResult<T>> {
     private RetryProxy<T> proxy;
     private Callable<RetryTaskResult<T>> actualTask;
     private final AtomicInteger attemptNumber = new AtomicInteger();
-    private List<RetryListener<T>> retryListeners;
-    private List<RetryResultListener<T>> retryResultListeners;
+    private final List<RetryListener<T>> retryListeners;
+    private final List<RetryResultListener<T>> retryResultListeners;
 
     private boolean done;
 
@@ -31,8 +32,8 @@ public class RetryTask<T> implements Callable<RetryTaskResult<T>> {
         this.done = false;
         this.id = StringUtil.uuid();
         this.actualTask = actualTask;
-        this.retryListeners = new ArrayList<>();
-        this.retryResultListeners = new ArrayList<>();
+        this.retryListeners = Collections.synchronizedList(new ArrayList<>());
+        this.retryResultListeners = Collections.synchronizedList(new ArrayList<>());
     }
 
     @Override
@@ -74,6 +75,8 @@ public class RetryTask<T> implements Callable<RetryTaskResult<T>> {
 
             //clear cache
             if(done) {
+                retryListeners.clear();
+                retryResultListeners.clear();
                 proxy.removeTaskCache(this.id);
             }
         }
@@ -102,6 +105,11 @@ public class RetryTask<T> implements Callable<RetryTaskResult<T>> {
         if(retryResultListeners.size() > 0) {
             retryResultListeners.forEach(listener -> listener.onRetry(this, retryTaskResult));
         }
+    }
+
+    //change callable
+    public void change(Callable<RetryTaskResult<T>> callable) {
+        this.actualTask = callable;
     }
 
     public String getId() {
