@@ -56,8 +56,8 @@ public class RetryTask<T> implements Callable<RetryTaskResult<T>> {
             //execute post-hook
             RetryTaskResult<T> finalResult = result;
             TryCatchUtil.safetyPost(() -> {
-                proxy.throughGlobalRetryResultListener(this, finalResult);
                 this.throughRetryResultListener(finalResult);
+                proxy.throughGlobalRetryResultListener(this, finalResult);
             });
             // +1 try times
             attemptNumber.incrementAndGet();
